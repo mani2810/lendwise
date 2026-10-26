@@ -1,0 +1,37 @@
+{
+  "form": {
+    "name": "Sneha Reddy",
+    "pan": "BDXPR5678S",
+    "dob": "1995-11-02",
+    "city": "Bengaluru",
+    "employment_type": "salaried",
+    "employer": "Brightline Retail Pvt Ltd",
+    "years_employed": 1.5,
+    "declared_income": 52000,
+    "loan_amount": 400000,
+    "tenure_months": 36,
+    "purpose": "wedding",
+    "expect": "refer (borderline: underwriter decides)"
+  },
+  "bureau": {
+    "score": 706,
+    "cards": [
+      {
+        "limit": 100000,
+        "balance": 81000,
+        "paid_full_share": 0.3
+      }
+    ],
+    "loans": [
+      {
+        "type": "consumer durable",
+        "emi": 4800,
+        "outstanding": 38000,
+        "dpd_max": 0
+      }
+    ],
+    "dpd_max_12m": 0,
+    "enquiries_6m": 3,
+    "writeoff": false
+  }
+}

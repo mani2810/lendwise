@@ -1,0 +1,37 @@
+{
+  "form": {
+    "name": "Karthik Iyer",
+    "pan": "EKIPI7890V",
+    "dob": "1986-05-09",
+    "city": "Chennai",
+    "employment_type": "self_employed",
+    "employer": "Iyer Electricals (proprietor)",
+    "years_employed": 7.0,
+    "declared_income": 120000,
+    "loan_amount": 1400000,
+    "tenure_months": 36,
+    "purpose": "business expansion",
+    "expect": "counter-offer (requested amount not affordable)"
+  },
+  "bureau": {
+    "score": 748,
+    "cards": [
+      {
+        "limit": 200000,
+        "balance": 70000,
+        "paid_full_share": 0.8
+      }
+    ],
+    "loans": [
+      {
+        "type": "business",
+        "emi": 26000,
+        "outstanding": 650000,
+        "dpd_max": 0
+      }
+    ],
+    "dpd_max_12m": 0,
+    "enquiries_6m": 2,
+    "writeoff": false
+  }
+}

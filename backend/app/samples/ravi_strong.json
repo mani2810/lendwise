@@ -1,0 +1,37 @@
+{
+  "form": {
+    "name": "Ravi Kumar",
+    "pan": "ABCPK1234R",
+    "dob": "1990-03-14",
+    "city": "Hyderabad",
+    "employment_type": "salaried",
+    "employer": "Infosys Ltd",
+    "years_employed": 6.0,
+    "declared_income": 95000,
+    "loan_amount": 500000,
+    "tenure_months": 36,
+    "purpose": "home renovation",
+    "expect": "approve"
+  },
+  "bureau": {
+    "score": 792,
+    "cards": [
+      {
+        "limit": 300000,
+        "balance": 42000,
+        "paid_full_share": 1.0
+      }
+    ],
+    "loans": [
+      {
+        "type": "car",
+        "emi": 12500,
+        "outstanding": 310000,
+        "dpd_max": 0
+      }
+    ],
+    "dpd_max_12m": 0,
+    "enquiries_6m": 1,
+    "writeoff": false
+  }
+}

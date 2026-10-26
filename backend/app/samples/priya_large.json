@@ -1,0 +1,37 @@
+{
+  "form": {
+    "name": "Priya Nair",
+    "pan": "DRNPN3456U",
+    "dob": "1984-01-30",
+    "city": "Mumbai",
+    "employment_type": "salaried",
+    "employer": "Global Bank of India",
+    "years_employed": 9.0,
+    "declared_income": 220000,
+    "loan_amount": 1500000,
+    "tenure_months": 48,
+    "purpose": "education",
+    "expect": "approve (needs second approver: above \u20b910 lakh)"
+  },
+  "bureau": {
+    "score": 818,
+    "cards": [
+      {
+        "limit": 500000,
+        "balance": 61000,
+        "paid_full_share": 1.0
+      }
+    ],
+    "loans": [
+      {
+        "type": "home",
+        "emi": 38000,
+        "outstanding": 4200000,
+        "dpd_max": 0
+      }
+    ],
+    "dpd_max_12m": 0,
+    "enquiries_6m": 0,
+    "writeoff": false
+  }
+}

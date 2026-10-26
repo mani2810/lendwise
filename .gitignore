@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.log
+.secrets/
+logs/
+.claude/
+# databases, uploads, generated files and backups (contain user data)
+*.db
+*.db-*
+*.sqlite
+backup-*
+data/
+data_demo/

@@ -1,0 +1,43 @@
+{
+  "form": {
+    "name": "Arun Mehta",
+    "pan": "CQMPM9012T",
+    "dob": "1988-07-21",
+    "city": "Pune",
+    "employment_type": "salaried",
+    "employer": "Quickserve Logistics",
+    "years_employed": 2.0,
+    "declared_income": 60000,
+    "loan_amount": 600000,
+    "tenure_months": 48,
+    "purpose": "debt consolidation",
+    "expect": "decline"
+  },
+  "bureau": {
+    "score": 641,
+    "cards": [
+      {
+        "limit": 60000,
+        "balance": 58500,
+        "paid_full_share": 0.0
+      }
+    ],
+    "loans": [
+      {
+        "type": "personal",
+        "emi": 6200,
+        "outstanding": 90000,
+        "dpd_max": 60
+      },
+      {
+        "type": "personal",
+        "emi": 5400,
+        "outstanding": 70000,
+        "dpd_max": 30
+      }
+    ],
+    "dpd_max_12m": 60,
+    "enquiries_6m": 7,
+    "writeoff": false
+  }
+}
