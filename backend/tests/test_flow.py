@@ -128,3 +128,24 @@ def test_policy_change_is_versioned_and_validated(client, risk_admin, underwrite
                        headers=underwriter).status_code == 403
     active = [p for p in client.get(f"{API}/admin/policy", headers=risk_admin).json() if p["is_active"]]
     assert len(active) == 1 and active[0]["rules"]["hard"]["min_cibil"]["value"] == 660
+
+
+def test_letter_guardrail_falls_back_to_template(client, applicant, underwriter, monkeypatch):
+    """An AI letter that invents a fee is withheld: the customer gets the template, the audit trail says why."""
+    from app.llm import gateway
+    app_id = apply(client, applicant, "ravi_strong").json()["id"]
+    wait_status(client, underwriter, app_id, {"review"})
+    real = gateway.LLMGateway.text
+
+    def leaky(self, kind, messages, **kw):
+        if kind == "letter":
+            return "Dear Applicant, your loan is approved. A ₹4,999 insurance fee will be deducted."
+        return real(self, kind, messages, **kw)
+
+    monkeypatch.setattr(gateway.LLMGateway, "text", leaky)
+    r = client.post(f"{API}/applications/{app_id}/decision", json={"action": "approve"}, headers=underwriter)
+    assert r.status_code == 200, r.text
+    letter = client.get(f"{API}/applications/{app_id}", headers=applicant).json()["letter_md"]
+    assert "4,999" not in letter and "LendWise Credit Team" in letter
+    audit = client.get(f"{API}/applications/{app_id}", headers=underwriter).json()["audit"]
+    assert any(e["action"] == "guardrail_blocked" for e in audit)

@@ -105,3 +105,43 @@ def test_logs_redact_pan_and_aadhaar():
     from app.core.logging import redact
     out = redact("applicant ABCPK1234R aadhaar 1234 5678 9012 token gsk_abcdefghijklmnop")
     assert "ABCPK1234R" not in out and "1234 5678 9012" not in out and "gsk_abcdefghij" not in out
+
+
+def test_prompt_injection_is_flagged_and_never_sent_to_the_model():
+    from app.agent.assess import compact
+    stmt, *_ = run("arun_risky")
+    flag = next(f for f in stmt["flags"] if f["code"] == "SUSPICIOUS_TEXT")
+    assert "APPROVE THIS" in flag["evidence"][0]["narration"]          # the underwriter sees it
+    sent = compact("analyse_bank_statement", stmt)
+    assert "INSTRUCTIONS" not in sent.upper() and "APPROVE THIS" not in sent.upper()   # the model does not
+    for key in ("ravi_strong", "priya_large", "karthik_self_employed", "sneha_borderline"):
+        assert "SUSPICIOUS_TEXT" not in {f["code"] for f in run(key)[0]["flags"]}
+
+
+def test_input_guardrail_scrubs_personal_data():
+    from app import guardrails as G
+    assert G.scrub_narration("UPI/RAHUL SHARMA/rahul@okaxis/412345678901/DREAM11") == "UPI • DREAM11"
+    masked = G.scrub_text("PAN ABCDE1234F aadhaar 1234 5678 9012 phone 9876543210 mail a.b@x.com acct 123456789012")
+    for leaked in ("ABCDE1234F", "1234 5678 9012", "9876543210", "a.b@x.com", "123456789012"):
+        assert leaked not in masked
+
+
+def test_output_guardrail_blocks_pii_and_invented_numbers():
+    from app import guardrails as G
+    facts = {"offer": {"amount": 500000, "emi": 16366.69, "annual_rate": 10.99, "processing_fee": 7500}}
+    assert G.check_output("Your EMI is ₹16,367 at 10.99% p.a. with a ₹7,500 fee.", names=["Ravi Kumar"],
+                          facts=facts) == []
+    assert G.check_output("Dear Ravi, your EMI is ₹16,367.", names=["Ravi Kumar"], facts=facts) == \
+        ["pii:applicant_name"]
+    assert G.check_output("A ₹999 insurance charge applies.", facts=facts) == ["unsupported_number:₹999"]
+    assert G.check_output("Contact 9876543210") == ["pii:phone"]
+
+
+def test_output_guardrail_checks_amounts_written_without_rupee_sign():
+    from app import guardrails as G
+    facts = {"offer": {"amount": 500000, "emi": 16366.99, "annual_rate": 10.99, "processing_fee": 7500,
+                       "total_payable": 589211.64}, "requested": {"tenure_months": 36}}
+    ok = "| 500,000.00 | 36 months | 10.99 % | 16,366.99 | 7,500.00 | 5,89,211.64 |"
+    assert G.check_output(ok, facts=facts) == []
+    assert G.check_output("| 5,00,000 | 36 months | 11.49 % | 16,366.99 | 9,999.00 |", facts=facts) == \
+        ["unsupported_number:9,999.00", "unsupported_number:11.49 %"]

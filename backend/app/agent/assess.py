@@ -19,6 +19,7 @@ from typing import Callable, TypedDict
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.graph import END, START, StateGraph
 
+from .. import guardrails as G
 from ..llm.gateway import BudgetExceeded, LLMGateway, LLMUnavailable
 from ..ml.model import RiskModel
 from . import underwriting as U
@@ -75,8 +76,11 @@ def compact(name: str, out: dict) -> str:
     if name == "analyse_bank_statement":
         keep = {k: out[k] for k in ("period", "avg_salary", "salary_months", "avg_credits", "avg_debits",
                                     "avg_emi_debits", "spend_to_income", "bounces", "gambling_txns", "min_balance")}
-        keep["flags"] = [{"code": f["code"], "text": f["text"],
-                          "evidence (untrusted narrations)": f["evidence"][:2]} for f in out["flags"]]
+        # input guardrail: evidence keeps only allow-listed words (no payee names, handles or references), and
+        # instruction-like lines are not forwarded at all
+        keep["flags"] = [{"code": f["code"], "text": f["text"], "evidence (untrusted narrations)": [
+            {"date": e["date"], "amount": e["amount"], "narration": G.scrub_narration(e["narration"])}
+            for e in f["evidence"][:2]] if f["code"] != "SUSPICIOUS_TEXT" else []} for f in out["flags"]]
         return json.dumps(keep, default=str)
     if name == "pull_credit_report":
         return json.dumps({k: v for k, v in out.items() if k != "loans"} | {"loans": [
@@ -204,6 +208,10 @@ def build(gw: LLMGateway | None, model: RiskModel, rules: dict, case: dict, stmt
                                tier="large", max_tokens=900)
             except LLMUnavailable:
                 text = None
+        if text and (problems := G.check_output(text)):         # output guardrail
+            on_step({"agent": "guardrail", "event": "blocked", "detail": "AI memo withheld (" + ", ".join(problems)
+                     + "); template memo used"})
+            text = None
         on_step({"agent": "underwriter", "event": "memo", "detail": "Credit memo written"
                  if text else "Credit memo generated from template (model unavailable)"})
         return {"memo": (text or template_memo(facts)).strip()}

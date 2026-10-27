@@ -18,6 +18,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .. import guardrails as G
 from ..agent import assess
 from ..agent import statement as S
 from ..agent import underwriting as U
@@ -377,7 +378,9 @@ def second_approval(db: Session, a: Application, admin: User, approve: bool, not
 def _finalise(db: Session, a: Application) -> None:
     a.status = "declined" if a.decision == "declined" else "offered"
     asm = latest_assessment(db, a.id)
-    a.letter_md = write_letter(a, asm)
+    a.letter_md, problems = write_letter(a, asm)
+    if problems:
+        audit(db, a.id, None, "guardrail_blocked", {"output": "letter", "problems": problems})
     db.commit()
 
 
@@ -391,17 +394,24 @@ improving the listed factors. Never add terms, conditions, fees, deductions or p
 facts. Sign off "LendWise Credit Team"."""
 
 
-def write_letter(a: Application, asm: Assessment | None) -> str:
+def write_letter(a: Application, asm: Assessment | None) -> tuple[str, list[str]]:
+    """The letter, plus any output-guardrail problems that caused the AI draft to be replaced by the template."""
     reasons = [r["text"] for r in ((asm.recommendation or {}).get("reasons") if asm else []) or []][:4]
     facts = {"reference": a.reference, "decision": a.decision, "requested": {"amount_inr": a.loan_amount,
                                                                             "tenure_months": a.tenure_months},
              "offer": a.offer, "principal_reasons": reasons if a.decision == "declined" else [],
              "underwriter_note_for_customer": None}
     try:
-        return get_gateway().text("letter", [SystemMessage(LETTER), HumanMessage(json.dumps(facts))], tier="large",
+        text = get_gateway().text("letter", [SystemMessage(LETTER), HumanMessage(json.dumps(facts))], tier="large",
                                   max_tokens=600).strip()
     except LLMUnavailable:
-        return template_letter(a, reasons)
+        return template_letter(a, reasons), []
+    # output guardrail: no personal data, and every ₹ amount / % must be one the code supplied
+    problems = G.check_output(text, names=[a.full_name], facts=facts)
+    if problems:
+        log.warning("letter guardrail blocked AI draft", extra={"application_id": a.id, "problems": problems})
+        return template_letter(a, reasons), problems
+    return text, []
 
 
 def template_letter(a: Application, reasons: list[str]) -> str:
@@ -441,5 +451,8 @@ def ask_case(asm: Assessment, question: str) -> str:
     data = {"recommendation": asm.recommendation, "statement": assess.compact("analyse_bank_statement", asm.statement),
             "bureau": assess.compact("pull_credit_report", asm.bureau), "affordability": asm.affordability,
             "risk": assess.compact("score_credit_risk", asm.risk), "policy": asm.policy["results"]}
-    return get_gateway().text("case_qa", [SystemMessage(QA), HumanMessage(
-        json.dumps(data, default=str)[:12000] + f"\n\nQUESTION: {question}")], tier="router", max_tokens=500).strip()
+    # input guardrail: staff may paste identifiers into the question; mask them before they leave the server
+    answer = get_gateway().text("case_qa", [SystemMessage(QA), HumanMessage(
+        json.dumps(data, default=str)[:12000] + f"\n\nQUESTION: {G.scrub_text(question)}")], tier="router",
+                                max_tokens=500).strip()
+    return G.scrub_text(answer) if G.pii_found(answer) else answer          # output guardrail

@@ -13,6 +13,8 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from ..guardrails import looks_like_instruction
+
 SALARY = re.compile(r"\b(salary|sal\b|payroll|wages|stipend)", re.I)
 EMI = re.compile(r"\b(emi|nach|ecs|loan|si-|standing instr|mandate)", re.I)
 BOUNCE = re.compile(r"(return|bounce|insuff|dishono|unpaid|rtn chg|chq ret|ecs ret|nach ret)", re.I)
@@ -181,6 +183,11 @@ def analyse(txns: list[Txn], declared_income: float) -> dict:
     if gambling:
         flags.append({"code": "GAMBLING", "text": f"{len(gambling)} payment(s) to betting/gaming merchants",
                       "evidence": [_snippet(t) for t in gambling[:4]]})
+    suspicious = [t for t in txns if looks_like_instruction(t.narration)]
+    if suspicious:          # shown to the underwriter; never forwarded to the model (see agent/assess.compact)
+        flags.append({"code": "SUSPICIOUS_TEXT", "text": f"{len(suspicious)} transaction(s) contain instruction-like "
+                                                         "text (possible prompt injection) - treated as data, ignored",
+                      "evidence": [_snippet(t) for t in suspicious[:4]]})
     if income_basis and avg_debits > income_basis * 1.0:
         flags.append({"code": "OVERSPEND", "text": "Average monthly spending exceeds income", "evidence": []})
     if balances and min(balances) < 0:
